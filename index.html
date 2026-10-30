@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>3D 打印模型生成器 · PP幻想</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23ff6f1e'/%3E%3Cellipse cx='16' cy='21.2' rx='6.2' ry='5.1' fill='%23fff8f0'/%3E%3Cellipse cx='8.4' cy='13.4' rx='2.7' ry='3.4' transform='rotate(-28 8.4 13.4)' fill='%23fff8f0'/%3E%3Cellipse cx='12.6' cy='9.6' rx='2.55' ry='3.3' transform='rotate(-10 12.6 9.6)' fill='%23fff8f0'/%3E%3Cellipse cx='19.4' cy='9.6' rx='2.55' ry='3.3' transform='rotate(10 19.4 9.6)' fill='%23fff8f0'/%3E%3Cellipse cx='23.6' cy='13.4' rx='2.7' ry='3.4' transform='rotate(28 23.6 13.4)' fill='%23fff8f0'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@800&family=DM+Serif+Display&family=Space+Mono:wght@700&family=ZCOOL+KuaiLe&family=ZCOOL+QingKe+HuangYou&family=Ma+Shan+Zheng&family=Zhi+Mang+Xing&display=swap">
+<link rel="stylesheet" href="./style.css?v=3.3">
+</head>
+<body>
+<header>
+  <a class="brand" href="./">
+    <span class="brand-icon" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none"><ellipse cx="16" cy="21.2" rx="6.2" ry="5.1" fill="#fff8f0"></ellipse><ellipse cx="8.4" cy="13.4" rx="2.7" ry="3.4" transform="rotate(-28 8.4 13.4)" fill="#fff8f0"></ellipse><ellipse cx="12.6" cy="9.6" rx="2.55" ry="3.3" transform="rotate(-10 12.6 9.6)" fill="#fff8f0"></ellipse><ellipse cx="19.4" cy="9.6" rx="2.55" ry="3.3" transform="rotate(10 19.4 9.6)" fill="#fff8f0"></ellipse><ellipse cx="23.6" cy="13.4" rx="2.7" ry="3.4" transform="rotate(28 23.6 13.4)" fill="#fff8f0"></ellipse></svg>
+    </span>
+    PP幻想
+  </a>
+  <span class="header-title">3D 打印模型生成器</span>
+  <label class="share-import header-share"><span>已有链接或分享码</span><input id="shareImport" placeholder="粘贴网页链接或 P1. 分享码" autocomplete="off" spellcheck="false"></label>
+  <span class="version">程序化宠物碗架 · v3.3</span>
+</header>
+
+<main>
+  <section class="workspace">
+    <div class="workspace-heading">
+      <div><h1>程序化狗碗 · 支架生成器</h1><p>调参数 → 实时预览 → 导出可直接打印的 STL</p></div>
+      <span class="live-badge">实时预览</span>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="stage-top">
+        <div>
+          <strong id="materialLabel">Bambu Lab · PLA Matte</strong>
+          <span id="meshRead">正在生成…</span>
+        </div>
+        <div class="stage-top-actions">
+          <button id="resetView" class="icon-button" title="重置视角" aria-label="重置视角">↺</button>
+        </div>
+      </div>
+      <div id="canvas"></div>
+      <div class="preview-notice" id="previewNotice" hidden=""></div>
+      <div class="view-buttons">
+        <button id="bowlToggle" class="active" aria-pressed="true">不锈钢内胆 <span id="bowlState" class="toggle-state">ON</span></button>
+        <button id="rotate" aria-pressed="false">自动旋转</button>
+        <button id="frontView">正面</button>
+        <button id="supportView">内部托底</button>
+        <button type="button" id="fullscreenView" class="stage-fullscreen" aria-pressed="false">全屏查看</button>
+      </div>
+      <span class="stage-guide"><span class="desktop-guide">拖动旋转 · 滚轮缩放</span><span class="touch-guide">单指旋转 · 双指缩放</span></span>
+    </div>
+
+    <div class="spec-strip">
+      <div><span>整体高度</span><strong id="heightRead">—</strong></div>
+      <div><span>最大外径</span><strong id="diamRead">—</strong></div>
+      <div><span>嵌入开口</span><strong id="holeRead">—</strong></div>
+    </div>
+
+    <div class="selection-info">
+      <span class="material-dot" id="materialDot"></span>
+      <div><strong id="selectedMaterial">—</strong><p id="selectedMaterialSub">—</p></div>
+      <span id="hexLabel">#FFFFFF</span>
+    </div>
+
+    <div class="print-note"><span>ⓘ</span><p>仅导出外部支架，内胆使用标准不锈钢碗（不参与导出）。首次打印建议先用少量层高验证碗口配合；造型起伏越大，所需支撑与层纹越明显。</p></div>
+  </section>
+
+  <aside class="parameter-workbench">
+    <div class="parameter-tabs" role="tablist" aria-label="定制参数">
+      <button id="tab-appearance" role="tab" aria-controls="panel-appearance" aria-selected="true" tabindex="0">造型与颜色</button>
+      <button id="tab-dimensions" role="tab" aria-controls="panel-dimensions" aria-selected="false" tabindex="-1">尺寸与内胆</button>
+      <button id="tab-engraving" role="tab" aria-controls="panel-engraving" aria-selected="false" tabindex="-1">名字刻印</button>
+    </div>
+
+    <div class="parameter-scroll">
+      <div id="panel-appearance" class="parameter-panel" role="tabpanel" aria-labelledby="tab-appearance" tabindex="0">
+        <section class="card">
+          <div class="section-head"><h2>造型</h2><span id="shapeCount">8 种预设</span></div>
+          <div class="shapes" id="shapes"></div>
+          <div class="slider-control">
+            <label for="wave">造型起伏</label><output id="waveOut">5 mm</output>
+            <input id="wave" type="range" min="1" max="10" step="0.5" value="5">
+          </div>
+          <div class="slider-control">
+            <label for="twist" id="twistLabel">整体扭转（螺纹）</label><output id="twistOut">0°</output>
+            <input id="twist" type="range" min="-360" max="360" step="5" value="0">
+          </div>
+          <p class="hint">起伏 = 侧壁凸起的毫米高度（壁会自动保留最小壁厚，不会挖穿）。扭转会把竖纹、花瓣、波浪这些竖向纹理按高度拧成螺纹，名字刻字仍保持竖直。</p>
+        </section>
+
+        <section class="card">
+          <div class="section-head"><h2>耗材颜色</h2><span>PLA Matte</span></div>
+          <p class="material-brand">Bambu Lab 哑光 PLA</p>
+          <div id="colors" class="colors"></div>
+          <label class="custom-picker">
+            <span class="color-wheel">＋</span>
+            <span>自定义颜色<small id="customHex">点击打开取色器</small></span>
+            <input id="customColor" type="color" value="#F7D959" aria-label="自定义颜色取色器">
+            <span class="chevron">›</span>
+          </label>
+          <p class="hint">官方色值用于屏幕预览，实物会受光线、层纹和批次影响。自定义颜色不对应指定耗材。</p>
+        </section>
+      </div>
+
+      <div id="panel-dimensions" class="parameter-panel" role="tabpanel" aria-labelledby="tab-dimensions" tabindex="0" hidden="">
+        <section class="card">
+          <div class="section-head"><h2>尺寸与内胆</h2><span>单位 mm</span></div>
+          <div class="slider-control">
+            <label for="height">支架高度</label><output id="heightOut">120 mm</output>
+            <input id="height" type="range" min="65" max="220" step="1" value="120">
+          </div>
+          <div class="inputs">
+            <label>碗口外径<span class="mm-field"><input id="rim" type="number" inputmode="decimal" min="90" max="260" step="1" value="160" aria-label="碗口外径"><i>mm</i></span></label>
+            <label>嵌入直径<span class="mm-field"><input id="diameter" type="number" inputmode="decimal" min="50" max="250" step="1" value="150" aria-label="嵌入直径"><i>mm</i></span></label>
+            <label>碗深<span class="mm-field"><input id="depth" type="number" inputmode="decimal" min="25" max="140" step="1" value="55" aria-label="碗深"><i>mm</i></span></label>
+          </div>
+          <details>
+            <summary>更多装配参数</summary>
+            <div class="inputs two">
+              <label>径向间隙<span class="mm-field"><input id="gap" type="number" inputmode="decimal" min="0.2" max="2" step="0.1" value="0.5" aria-label="径向间隙"><i>mm</i></span></label>
+              <label>主体壁厚<span class="mm-field"><input id="wall" type="number" inputmode="decimal" min="2" max="8" step="0.5" value="4" aria-label="主体壁厚"><i>mm</i></span></label>
+            </div>
+          </details>
+          <p class="hint">碗口外径 = 不锈钢碗最外圈直径；嵌入直径 = 碗放进去后与支架接触那一圈的高度上的直径；碗深 = 碗沿承托面到碗底的垂直距离。</p>
+
+          <div class="support-info">
+            <div class="support-header">
+              <strong>底部支撑</strong>
+              <button id="bottomSupportToggle" class="support-toggle" role="switch" aria-checked="true" aria-label="底部支撑"><span id="bottomSupportState">ON</span><i aria-hidden="true"></i></button>
+            </div>
+            <span id="supportRead">底部托高 65 mm，有托盘托住碗底</span>
+            <p id="supportDescription">关闭后碗身直接落到地面，支架只是一圈支撑环。</p>
+          </div>
+        </section>
+      </div>
+
+      <div id="panel-engraving" class="parameter-panel" role="tabpanel" aria-labelledby="tab-engraving" tabindex="0" hidden="">
+        <section class="card">
+          <div class="section-head"><h2>名字刻印</h2><button id="resetText" class="text-button">重置</button></div>
+          <div class="name-wrap">
+            <input id="petName" type="text" value="Momo" maxlength="12" aria-label="宠物名字" placeholder="输入宠物名字" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <span id="nameCount">4 / 12</span>
+          </div>
+          <div class="segmented" id="engraveMode" role="group" aria-label="刻印方式">
+            <button type="button" aria-pressed="true" data-engrave="raised" tabindex="-1">浮雕</button>
+            <button type="button" aria-pressed="false" data-engrave="inset" tabindex="-1">凹刻</button>
+          </div>
+          <label class="field-label">字体预设 <span class="field-note">· 中文已单独适配</span></label>
+          <div id="fonts" class="fonts"></div>
+
+          <div class="decoration-controls">
+            <label class="field-label">装饰形状</label>
+            <div id="decorations" class="decorations"></div>
+            <label class="field-label">装饰位置</label>
+            <div class="segmented decoration-position" id="decorationPosition" role="group" aria-label="装饰位置">
+              <button type="button" aria-pressed="true" data-deco-pos="right" tabindex="-1">名字右侧</button>
+              <button type="button" aria-pressed="false" data-deco-pos="left" tabindex="-1">名字左侧</button>
+              <button type="button" aria-pressed="false" data-deco-pos="replace" tabindex="-1">替换 O</button>
+            </div>
+            <p class="hint">装饰与名字共用大小、位置和刻印深度。「替换 O」会把名字里的大写 O 换成装饰图形。</p>
+          </div>
+
+          <div class="slider-control"><label for="fontSize">字号</label><output id="fontSizeOut">24 mm</output><input id="fontSize" type="range" min="10" max="38" step="1" value="24"></div>
+          <div class="slider-control"><label for="textY">上下位置</label><output id="textYOut">48 %</output><input id="textY" type="range" min="15" max="85" step="1" value="48"></div>
+          <div class="slider-control"><label for="textAngle">环绕位置</label><output id="textAngleOut">0°</output><input id="textAngle" type="range" min="-180" max="180" step="1" value="0"></div>
+          <div class="slider-control"><label for="textDepth" id="depthLabel">浮雕厚度</label><output id="textDepthOut">1.2 mm</output><input id="textDepth" type="range" min="0.4" max="2.4" step="0.1" value="1.2"></div>
+          <p class="hint">名字区域会自动形成一道平整环带，避免被纹理吃掉；刻字几何会真正写进 STL。</p>
+        </section>
+      </div>
+    </div>
+
+    <div class="export-area">
+      <p id="error" role="alert"></p>
+      <button id="export" class="primary">导出 3D 打印模型 <span>↓ STL</span></button>
+      <button type="button" id="shareExport" class="text-button share-export">生成设计链接 / 分享码</button>
+      <p id="exportStatus">包含实际刻印几何 · 毫米制 · 不包含内胆</p>
+    </div>
+  </aside>
+</main>
+
+<footer>PP 幻想 <span>3D 打印模型生成器</span></footer>
+
+<div id="shareSheet" class="share-sheet" hidden="">
+  <div class="share-card" role="dialog" aria-labelledby="shareTitle">
+    <h2 id="shareTitle">分享这个设计</h2>
+    <p>把链接或分享码发给别人，打开后所有参数会自动恢复。</p>
+    <label class="field-label" for="shareLink">网页链接 · 可长按选中</label>
+    <textarea id="shareLink" readonly="" rows="3"></textarea>
+    <label class="field-label" for="shareCode">分享码 · 备用</label>
+    <textarea id="shareCode" readonly="" rows="2"></textarea>
+    <p class="hint" id="shareHint">已自动复制到剪贴板（若浏览器允许）。</p>
+    <div class="share-actions">
+      <button type="button" id="copyShareLink" class="text-button">复制链接</button>
+      <button type="button" id="closeShare">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+
+<script type="importmap">
+{"imports":{"three":"./three.module.min.js"}}
+</script>
+<script type="module" src="./app.js?v=3.3"></script>
+<script>
+/* 直接双击 index.html 时浏览器会拦截 ES 模块，这里给出可执行的解决办法 */
+setTimeout(function () {
+  if (window.__ppfReady) return;
+  var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;z-index:99;background:#fdfbf9f2;display:flex;align-items:center;justify-content:center;padding:24px;font:14px/1.7 -apple-system,"PingFang SC",sans-serif;color:#2b1a07;text-align:left';
+  d.innerHTML =
+    '<div style="max-width:520px;background:#fffcf9;border:1px solid #e6ddd2;border-radius:18px;padding:26px;box-shadow:0 10px 30px #0000001f">' +
+    '<h2 style="margin:0 0 10px;font-size:18px">需要通过本地服务器打开</h2>' +
+    '<p style="margin:0 0 14px;color:#8a7b6a">浏览器的安全策略不允许用 file:// 直接加载 ES 模块。双击本文件夹里的「启动.command」，或在终端执行：</p>' +
+    '<pre style="margin:0 0 14px;padding:12px 14px;background:#f6efe4;border-radius:10px;font-size:12.5px;overflow:auto">cd "PP幻想" &amp;&amp; python3 -m http.server 8000</pre>' +
+    '<p style="margin:0;color:#8a7b6a">然后访问 <b style="color:#ff6f1e">http://localhost:8000/</b></p>' +
+    '</div>';
+  document.body.appendChild(d);
+}, 1500);
+</script>
+</body>
+</html>
